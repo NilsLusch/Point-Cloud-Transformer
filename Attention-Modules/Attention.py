@@ -1,3 +1,7 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 #Scalling with the sqrt of the embedd size otherwise the variance becomes too large
 def scaled_self_attention(q, k, v, key_size):
     weight = torch.matmul(q, k)#b,n,n
@@ -44,28 +48,7 @@ class Offset_Attention_Layer(nn.Module):
         attention  = self.lbr(attention)
         x = x + attention
         return x
-      class Self_Attention_Block(nn.Module):
-    def __init__(self, layers, attention_features, key_size, value_size):
-        super(Self_Attention_Block, self).__init__()
-        self.layers = layers
-        self.attention_features = attention_features
-        self.key_size = key_size
-        self.value_size = value_size
-        
-        self.attention_layers =  nn.ModuleList([Offset_Attention_Layer(self.attention_features, self.key_size, self.value_size) 
-                                                                        for i in range(self.layers)])
-    def forward(self, x, coordinates=None):
-        output = []
-        for count, layer in enumerate(self.attention_layers):
-            if count == 0:
-                 out = layer(x, coordinates)
-            else:
-                out = layer(output[count-1], coordinates)
-            output.append(out)   
-            
-        x = torch.cat(output, dim=1)
-        return x
-      #In large parts based on:
+      
 #https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial6/Transformers_and_MHAttention.html
 #Changes made are to account for the format of the data
 class Multihead_Attention_Layer(nn.Module):
@@ -103,5 +86,82 @@ class Multihead_Attention_Layer(nn.Module):
         #return it back into a form usable for convolutional layers
         x = values.permute(0,2,1)
         x =  self.out(x)
+        return x        
+class Self_Attention_Block(nn.Module):
+    def __init__(self, layers, attention_features, key_size, value_size):
+        super(Self_Attention_Block, self).__init__()
+        self.layers = layers
+        self.attention_features = attention_features
+        self.key_size = key_size
+        self.value_size = value_size
+        
+        self.attention_layers =  nn.ModuleList([Offset_Attention_Layer(self.attention_features, self.key_size, self.value_size) 
+                                                                        for i in range(self.layers)])
+    def forward(self, x, coordinates=None):
+        output = []
+        for count, layer in enumerate(self.attention_layers):
+            if count == 0:
+                 out = layer(x, coordinates)
+            else:
+                out = layer(output[count-1], coordinates)
+            output.append(out)   
+            
+        x = torch.cat(output, dim=1)
         return x
+      #In large parts based on:
+class Decoder_Block(nn.Module):
+    def __init__(self, embeddsize, heads, forward_expansion, dropout):
+        super(Decoder_Block, self).__init__()
+        self.embeddsize = embeddsize
+        self.heads = heads
+        self.forward_expansion = forward_expansion
+        self.dropout = dropout
+        
+        self.multihead_attention = Multihead_Attention_Layer(self.embeddsize, self.heads)
+        
+        self.norm1 = nn.BatchNorm1d(self.embeddsize)
+        self.norm2 = nn.BatchNorm1d(self.embeddsize)
+
+        nn.LayerNorm
+        self.feed_forward = nn.Sequential(
+            nn.Conv1d(self.embeddsize, self.embeddsize*self.forward_expansion, kernel_size=1, bias=True),
+            nn.ReLU(),
+            nn.Conv1d(self.embeddsize*self.forward_expansion, self.embeddsize, kernel_size=1, bias=True),
+            nn.Dropout(self.dropout)
+        )
+       
+    def forward(self, x, coordinates=None):
+        if coordinates != None:
+            x = x + coordinates
+        attention = self.multihead_attention(x)
+        x = self.norm1(x+attention)
+        forward = self.feed_forward(x)
+        x = self.norm2(x+forward)
+        return x
+#Difference between the Encoder blocks is that this encoder block only uses a single linear layer as its feedforward network
+class Decoder_Block_2(nn.Module):
+    def __init__(self, embeddsize, heads, dropout):
+        super(Decoder_Block_2, self).__init__()
+        self.embeddsize = embeddsize
+        self.heads = heads
+        self.dropout = dropout
+        
+        self.multihead_attention = Multihead_Attention_Layer(self.embeddsize, self.heads)
+        
+        self.norm1 = nn.BatchNorm1d(self.embeddsize)
+        self.norm2 = nn.BatchNorm1d(self.embeddsize)
+
+        nn.LayerNorm
+        self.feed_forward = nn.Sequential(
+            nn.Conv1d(self.embeddsize, self.embeddsize, kernel_size=1, bias=True),
+            nn.ReLU())
+       
+    def forward(self, x, coordinates=None):
+        if coordinates != None:
+            x = x + coordinates
+        attention = self.multihead_attention(x)
+        x = self.norm1(x+attention)
+        forward = self.feed_forward(x)
+        x = self.norm2(x+forward)
+        return x    
       
