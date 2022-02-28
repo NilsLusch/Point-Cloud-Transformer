@@ -65,3 +65,17 @@ class MultiHead_Attention_Block2(nn.Module):
         for layer in self.decoder_layers:
             x = layer(x)
         return x
+class MultiHead_Attention_Block3(nn.Module):
+    def __init__(self, layers, heads, embeddsize, dropout):
+        super(MultiHead_Attention_Block3, self).__init__()
+        self.layers = layers
+        self.heads = heads
+        self.embeddsize = embeddsize
+        self.dropout = dropout
+        
+        self.decoder_layers =  nn.ModuleList([Decoder_Block_2(self.embeddsize, self.heads, self.dropout) 
+                                                                        for i in range(self.layers)])
+    def forward(self, x, coordinates=None):
+        for layer in self.decoder_layers:
+            x = layer(x)
+        return x
