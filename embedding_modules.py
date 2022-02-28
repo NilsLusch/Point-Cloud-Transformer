@@ -20,6 +20,8 @@ class Naive_Embedding(nn.Module):
         x = x.permute(0,2,1)
         x = self.embedding(x)
         return x
+    
+    
 #Based on the code form: https://github.com/MenghaoGuo/PCT/blob/main/networks/cls/pct.py
 class Sample_and_Group(nn.Module):
     def __init__(self, output_features, k):
@@ -70,6 +72,7 @@ class Sample_and_Group(nn.Module):
         x = x.reshape(batch, points, -1)
         #Output will be (batch, dimensions, points) and the sampled coordiantes
         return x, sample_coords
+
 class Neighboorhood_Embedding(nn.Module):
     #input features refers to the amount of features in the set for example xyz or additional rgb features
     #output features referers to the features output after the two cascading layers
