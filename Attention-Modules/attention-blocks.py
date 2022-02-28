@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from Attention-Modules import 
+from Attention import Self_Attention_Block, Multihead_Attention_Layer, Decoder_Block, Decoder_Block_2
 
 class Self_Attention_Block(nn.Module):
     def __init__(self, layers, attention_features, key_size, value_size):
